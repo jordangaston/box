@@ -115,7 +115,24 @@ Restart=on-failure
 WantedBy=multi-user.target
 UNIT
 
-# ---- 8. Orca headless runtime (x86 AppImage; CX53 is Intel) ----------------
+# ---- 8. Semantic search: local embeddings via Ollama (keyless, no egress) ---
+# Runs a small embedding model on the box. OK treats a loopback endpoint as
+# "no API key required", so embeddings stay on-box — nothing leaves the machine.
+curl -fsSL https://ollama.com/install.sh | sh
+systemctl enable --now ollama
+for i in $(seq 1 30); do curl -sf http://localhost:11434/ >/dev/null 2>&1 && break; sleep 1; done
+ollama pull nomic-embed-text
+cd /home/orca
+sudo -u orca -H bash -eu <<'EMB'
+cd ~/knowledge
+ok embeddings set-url http://localhost:11434/v1
+ok embeddings set-model nomic-embed-text
+ok embeddings enable
+EMB
+# Coverage (all pages embedded) builds automatically on the first agent search;
+# `ok embeddings status` shows progress. OK re-embeds changed pages on its own.
+
+# ---- 9. Orca headless runtime (x86 AppImage; CX53 is Intel) ----------------
 mkdir -p /opt/orca
 curl -L https://github.com/stablyai/orca/releases/latest/download/orca-linux.AppImage \
   -o /opt/orca/orca-linux.AppImage

@@ -11,6 +11,8 @@ your laptop and your phone over Tailscale.
 - **Claude Code** installed on the box, so agents run on the server, not your laptop.
 - **Open Knowledge** running as a service, auto-committing and pushing to a private
   GitHub repo — your knowledge base survives total loss of the box.
+- **Semantic search** over the knowledge base, powered by a **local** embedding model
+  (Ollama) — agents find content by meaning, and nothing leaves the box.
 - **Tailscale** ties everything together on a private network. Nothing is exposed
   to the public internet.
 
@@ -107,9 +109,9 @@ GIT_NAME="Your Name" \
 GIT_EMAIL="you@example.com" \
 bash hetzner-box-setup.sh
 ```
-It installs Node, Tailscale, Claude Code, Open Knowledge, and the Orca runtime, and
-starts two services. It **pauses once** for Tailscale sign-in — use the same account
-as your laptop so the box joins the same tailnet.
+It installs Node, Tailscale, Claude Code, Open Knowledge, Ollama (local embeddings),
+and the Orca runtime, and starts three services. It **pauses once** for Tailscale
+sign-in — use the same account as your laptop so the box joins the same tailnet.
 
 When it finishes, run the interactive steps it prints, as the `orca` service user:
 ```bash
@@ -174,6 +176,35 @@ runtime (as in Part D) rather than editing the file, so a fork keeps no personal
 |---|---|---|
 | 6768 | Orca runtime | Tailscale (laptop + phone pairing) |
 | 8080 | Open Knowledge | `tailscale serve` HTTPS, or `localhost` for on-box agents |
+| 11434 | Ollama (embeddings) | `localhost` only — never exposed |
+
+## Semantic search (local, keyless)
+
+The box runs semantic search over the knowledge base with a **local** embedding model,
+so agent queries surface conceptually-related pages even with no keyword overlap — and
+**no content ever leaves the box** (no cloud provider, no API key, no per-query cost).
+
+How it's wired (the setup script does all of this):
+- **Ollama** runs as a systemd service on `127.0.0.1:11434` with the `nomic-embed-text`
+  model, exposing an OpenAI-compatible `/v1/embeddings` endpoint.
+- Open Knowledge points at that loopback endpoint. **OK treats a loopback URL as
+  "no API key required"**, so it embeds with no auth and no egress:
+  ```bash
+  ok embeddings set-url http://localhost:11434/v1
+  ok embeddings set-model nomic-embed-text
+  ok embeddings enable
+  ```
+- These settings live in `.ok/local/config.yml` (per-machine, gitignored) — they stay
+  on the box and never reach the git repo.
+
+Operating notes:
+- The corpus embeds **automatically on the first agent search** after enabling; check
+  progress with `ok embeddings status` (`coverage: N / N pages embedded`).
+- OK re-embeds changed pages on its own as the knowledge base evolves.
+- The `search` MCP tool uses semantic ranking **by default** when enabled; pass
+  `semantic: false` on a call to force pure-lexical.
+- To swap models later: `ok embeddings set-model <name>` (re-embeds on next search).
+  A different embedding model with a GPU box would be faster, but CPU is fine here.
 
 ## Known limitations
 
