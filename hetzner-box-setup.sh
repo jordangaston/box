@@ -21,7 +21,7 @@
 #
 #   # 2. Recovery key — store its PRIVATE half only in your password manager.
 #   ssh-keygen -t ed25519 -C "recovery-key" -f ~/.ssh/recovery_ed25519
-#   cat ~/.ssh/recovery_ed25519.pub      # paste this into RECOVERY_PUBKEY below
+#   cat ~/.ssh/recovery_ed25519.pub      # add as a 2nd SSH key in the Hetzner console
 #
 # Back up ~/.ssh/id_ed25519 + its passphrase to a password manager, plus one
 # encrypted offline copy. Never sync the private key unencrypted to any cloud.
@@ -32,27 +32,13 @@ set -euo pipefail
 # Public repo: keep your real values OUT of this file. Supply them at runtime:
 #   GH_REPO_URL=https://github.com/you/knowledge.git \
 #   GIT_NAME="Jordan Gaston" GIT_EMAIL="you@example.com" \
-#   RECOVERY_PUBKEY="$(cat ~/.ssh/recovery_ed25519.pub)" \
 #   bash hetzner-box-setup.sh
 # Each line below uses your env value if set, else the placeholder default.
+# SSH keys (primary AND recovery) are selected in the Hetzner console at create
+# time and injected into root's authorized_keys — no key handling needed here.
 GH_REPO_URL="${GH_REPO_URL:-https://github.com/YOURUSER/knowledge.git}"   # empty PRIVATE repo
 GIT_NAME="${GIT_NAME:-Your Name}"
 GIT_EMAIL="${GIT_EMAIL:-you@example.com}"
-# RECOVERY_PUBKEY = contents of ~/.ssh/recovery_ed25519.pub (a public key; safe).
-# Your PRIMARY key is already injected by Hetzner at create time; this adds a
-# backup key so a single lost/corrupted key never locks you out of the box.
-RECOVERY_PUBKEY="${RECOVERY_PUBKEY:-ssh-ed25519 AAAA...replace-me... recovery-key}"
-
-# ---- 0b. Trust the recovery SSH key for root -------------------------------
-if [[ "$RECOVERY_PUBKEY" == ssh-* && "$RECOVERY_PUBKEY" != *"AAAA...replace-me..."* ]]; then
-  install -d -m 700 /root/.ssh
-  grep -qxF "$RECOVERY_PUBKEY" /root/.ssh/authorized_keys 2>/dev/null \
-    || printf '%s\n' "$RECOVERY_PUBKEY" >> /root/.ssh/authorized_keys
-  chmod 600 /root/.ssh/authorized_keys
-  echo "Recovery SSH key trusted for root."
-else
-  echo "WARN: RECOVERY_PUBKEY not set — skipping. Paste your recovery .pub and re-run to add it." >&2
-fi
 
 # ---- 1. Service user + base packages ---------------------------------------
 useradd --create-home --shell /bin/bash orca
