@@ -28,14 +28,20 @@
 # ===========================================================================
 set -euo pipefail
 
-# ---- 0. Fill these in ------------------------------------------------------
-GH_REPO_URL="https://github.com/YOURUSER/knowledge.git"   # empty PRIVATE repo you created
-GIT_NAME="Jordan Gaston"
-GIT_EMAIL="jordangaston1994@gmail.com"
-# Paste the contents of ~/.ssh/recovery_ed25519.pub here (one line, from `cat`).
+# ---- 0. Config — set these as environment variables when you run the script -
+# Public repo: keep your real values OUT of this file. Supply them at runtime:
+#   GH_REPO_URL=https://github.com/you/knowledge.git \
+#   GIT_NAME="Jordan Gaston" GIT_EMAIL="you@example.com" \
+#   RECOVERY_PUBKEY="$(cat ~/.ssh/recovery_ed25519.pub)" \
+#   bash hetzner-box-setup.sh
+# Each line below uses your env value if set, else the placeholder default.
+GH_REPO_URL="${GH_REPO_URL:-https://github.com/YOURUSER/knowledge.git}"   # empty PRIVATE repo
+GIT_NAME="${GIT_NAME:-Your Name}"
+GIT_EMAIL="${GIT_EMAIL:-you@example.com}"
+# RECOVERY_PUBKEY = contents of ~/.ssh/recovery_ed25519.pub (a public key; safe).
 # Your PRIMARY key is already injected by Hetzner at create time; this adds a
 # backup key so a single lost/corrupted key never locks you out of the box.
-RECOVERY_PUBKEY="ssh-ed25519 AAAA...replace-me... recovery-key"
+RECOVERY_PUBKEY="${RECOVERY_PUBKEY:-ssh-ed25519 AAAA...replace-me... recovery-key}"
 
 # ---- 0b. Trust the recovery SSH key for root -------------------------------
 if [[ "$RECOVERY_PUBKEY" == ssh-* && "$RECOVERY_PUBKEY" != *"AAAA...replace-me..."* ]]; then
